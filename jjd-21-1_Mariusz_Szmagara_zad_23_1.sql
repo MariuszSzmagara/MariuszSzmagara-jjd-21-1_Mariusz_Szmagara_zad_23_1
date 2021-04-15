@@ -36,13 +36,13 @@ SELECT * FROM employee ORDER BY last_name ASC;
 SELECT * FROM employee WHERE position = 'Staff';
 
 -- 5. Pobiera pracowników, którzy mają co najmniej 30 lat.
-SELECT * FROM employee WHERE (DATEDIFF(CURDATE(), date_of_birth) / 365.25) >= 30;
+SELECT * FROM employee WHERE (TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE())) >= 30;
 
 -- 6. Zwiększa wypłatę pracowników na wybranym stanowisku o 10%.
-UPDATE employee SET salary = salary + (salary * 0.1) WHERE position = 'Engineer';
+UPDATE employee SET salary = salary * 1.1 WHERE position = 'Engineer';
 
 -- 7. Usuwa najmłodszego pracownika.
-DELETE FROM employee WHERE date_of_birth = (SELECT MAX(date_of_birth) FROM employee);
+DELETE FROM employee ORDER BY date_of_birth DESC LIMIT 1;
 
 -- 8. Usuwa tabelę pracownik.
 DROP TABLE IF EXISTS employee;
@@ -71,16 +71,12 @@ CREATE TABLE employee (
 id INT PRIMARY KEY AUTO_INCREMENT,
 first_name VARCHAR(30),
 last_name VARCHAR(30),
-gender ENUM('M', 'F')
+gender ENUM('M', 'F'),
+position_id INT NOT NULL,
+contact_id INT UNIQUE NOT NULL,
+FOREIGN KEY(position_id) REFERENCES employee_position(id),
+FOREIGN KEY(contact_id) REFERENCES employee_contact_info(id)
 ); 
-
-ALTER TABLE employee
-ADD position_id INT,
-ADD FOREIGN KEY(position_id) REFERENCES employee_position(id);
-
-ALTER TABLE employee_contact_info
-ADD employee_id INT UNIQUE NOT NULL,
-ADD FOREIGN KEY(employee_id) REFERENCES employee(id);
 
 -- 12. Dodaje dane testowe 
 --     (w taki sposób, aby powstały pomiędzy nimi sensowne powiązania).
@@ -93,48 +89,47 @@ VALUES
 ('Senior Staff', 'Responsible for planning and directing the work of a group of individuals.', 65909),
 ('Staff', 'Employed as a clerical worker in an office.', 67534);
 
-INSERT INTO employee
-(first_name, last_name, gender, position_id)
-VALUES
-('Georgi', 'Facello', 'M', 4),
-('Bezalel', 'Simmel', 'F', 5),
-('Parto', 'Bamford', 'M', 3),
-('Chirstian', 'Koblick', 'M', 4),
-('Kyoichi', 'Maliniak', 'M', 5),
-('Anneke', 'Preusig', 'F', 1),
-('Tzvetan', 'Zielinski', 'F', 1),
-('Saniya', 'Kalloufi', 'M', 2),
-('Sumant', 'Peac', 'F', 3),
-('Duangkaew', 'Piveteau', 'F', 2);
 
 INSERT INTO employee_contact_info
-(employee_id, street_name_and_house_or_flat_no, place, postcode)
+(street_name_and_house_or_flat_no, place, postcode)
 VALUES
-(6, 'P.O. Box 418, 2249 Ut, Av.', 'Puqueldón', '81098'),
-(3, '9481 Eu Av.', 'Durg', '90210'),
-(1, '8745 Nunc. Road', 'Tranent', '24622'),
-(8, '821-5631 Mauris Rd.', 'Dorgali', '35663'),
-(10, '7320 Ut, Rd.', 'Roselies', '72314'),
-(2, '1434 Tellus Av.', 'Tanjung Pinang', '38185'),
-(9, '9687 Lectus Avenue', 'Matlock', '05447'),
-(7, '631-9762 Elit, Road', 'Ełk', '90210'),
-(4, '288-2006 Ac, Avenue', 'Rajkot', '04476'),
-(5, '6472 Rhoncus St.', 'Kursk', '90210');
+('P.O. Box 418, 2249 Ut, Av.', 'Puqueldón', '81098'),
+('9481 Eu Av.', 'Durg', '90210'),
+('8745 Nunc. Road', 'Tranent', '24622'),
+('821-5631 Mauris Rd.', 'Dorgali', '35663'),
+('7320 Ut, Rd.', 'Roselies', '72314'),
+('1434 Tellus Av.', 'Tanjung Pinang', '38185'),
+('9687 Lectus Avenue', 'Matlock', '05447'),
+('631-9762 Elit, Road', 'Ełk', '90210'),
+('288-2006 Ac, Avenue', 'Rajkot', '04476'),
+('6472 Rhoncus St.', 'Kursk', '90210');
+
+INSERT INTO employee
+(first_name, last_name, gender, position_id, contact_id)
+VALUES
+('Georgi', 'Facello', 'M', 4, 3),
+('Bezalel', 'Simmel', 'F', 5, 6),
+('Parto', 'Bamford', 'M', 3, 2),
+('Chirstian', 'Koblick', 'M', 4, 9),
+('Kyoichi', 'Maliniak', 'M', 5, 10),
+('Anneke', 'Preusig', 'F', 1, 1),
+('Tzvetan', 'Zielinski', 'F', 1, 8),
+('Saniya', 'Kalloufi', 'M', 2,  4),
+('Sumant', 'Peac', 'F', 3, 7),
+('Duangkaew', 'Piveteau', 'F', 2, 5);
 
 -- 13. Pobiera pełne informacje o pracowniku 
 --     (imię, nazwisko, adres, stanowisko).
-SELECT * FROM employee LEFT JOIN employee_contact_info ON employee.id = employee_contact_info.employee_id
-  LEFT JOIN employee_position ON employee.position_id = employee_position.id
+SELECT * FROM employee INNER JOIN employee_contact_info ON employee.contact_id = employee_contact_info.id
+  INNER JOIN employee_position ON employee.position_id = employee_position.id
 WHERE employee.id = 1;
 
 -- 14. Oblicza sumę wypłat dla wszystkich pracowników w firmie.
-SELECT SUM(salary) FROM employee LEFT JOIN employee_contact_info ON employee.id = employee_contact_info.employee_id
-  LEFT JOIN employee_position ON employee.position_id = employee_position.id;
+SELECT SUM(salary) FROM employee INNER JOIN employee_position ON employee.position_id = employee_position.id;
 
 -- 15. Pobiera pracowników mieszkających w lokalizacji z kodem pocztowym 90210 
 --     (albo innym, który będzie miał sens dla Twoich danych testowych).
-SELECT * FROM employee LEFT JOIN employee_contact_info ON employee.id = employee_contact_info.employee_id
-  LEFT JOIN employee_position ON employee.position_id = employee_position.id
+SELECT * FROM employee INNER JOIN employee_contact_info ON employee.contact_id = employee_contact_info.id
 WHERE employee_contact_info.postcode = '90210';
 
 
